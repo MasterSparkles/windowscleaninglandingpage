@@ -85,9 +85,9 @@
     .hero{
       position:relative;overflow:hidden;border-radius:0 0 22px 22px;
       background:
-        radial-gradient(circle at 78% 24%, rgba(65,196,218,.22), transparent 27%),
-        linear-gradient(rgba(5,43,79,.91),rgba(7,48,87,.95)),
-        url('MS_MEDIA/windows_inside_view.jpg') center/cover,
+        radial-gradient(circle at 78% 24%, rgba(65,196,218,.15), transparent 27%),
+        linear-gradient(rgba(5,43,79,.65),rgba(7,48,87,.70)),
+        url('MS_MEDIA/van2.jpg') center/cover,
         linear-gradient(135deg,#176f9e,#0b365f 68%,#082b4e);
       color:#fff;
       min-height:780px;
@@ -217,6 +217,25 @@
       flex:0 0 auto;
       cursor:pointer;
     }
+    
+    /* Option Grid for Checkboxes/Radio */
+    .option-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .option-grid.levels{grid-template-columns:repeat(3,1fr)}
+    .option-grid.timing{grid-template-columns:repeat(2,1fr)}
+    .option-box{
+      position:relative;display:flex;align-items:center;gap:12px;
+      padding:16px 18px;border:2px solid #e2e8f0;border-radius:12px;
+      background:#fff;cursor:pointer;transition:all 0.2s;min-height:60px
+    }
+    .option-box:hover{border-color:#20b7c9;background:#f8fcfd;transform:translateY(-1px)}
+    .option-box:has(input:checked){
+      border-color:#20b7c9;background:#f0f9fb;box-shadow:0 2px 8px rgba(32,183,201,.15)
+    }
+    .option-box input{
+      width:20px;height:20px;margin:0;accent-color:#20b7c9;cursor:pointer;flex-shrink:0
+    }
+    .option-box span{color:#1e3a5f;font-weight:600;font-size:15px}
+    
     .submit{
       border:0;border-radius:8px;background:#1e3a5f;color:#fff;
       padding:16px 32px;font-weight:700;font-size:16px;cursor:pointer;transition:all 0.3s;
@@ -237,11 +256,15 @@
     #selectedTimeSlot{margin-top:12px;padding:12px;background:#f0f9fb;border:1px solid #20b7c9;border-radius:8px;font-weight:600;color:#1e3a5f;display:none}
 
     /* service intro */
-    .service-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:42px}
-    .service-card{
-      border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(20,44,80,.06);transition:transform 0.3s,box-shadow 0.3s
+    .service-grid{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:42px
     }
-    .service-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(20,44,80,.12)}
+    .service-card{
+      border-radius:16px;border:1px solid var(--line);overflow:hidden;
+      background:#fff;box-shadow:0 4px 20px rgba(20,44,80,.06);
+      transition:transform 0.3s,box-shadow 0.3s;display:flex;flex-direction:column
+    }
+    .service-card:hover{transform:translateY(-8px);box-shadow:0 16px 50px rgba(20,44,80,.15)}
     .visual{
       min-height:250px;display:flex;align-items:flex-end;padding:24px;color:#fff;font-weight:900;font-size:22px;
       background:
@@ -270,14 +293,13 @@
       content:attr(data-label);position:absolute;left:18px;bottom:18px;background:rgba(17,40,72,.88);
       color:#fff;padding:9px 12px;border-radius:12px;font-weight:800
     }
-    .ba-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:38px}
-    .ba-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;transition:transform 0.3s,box-shadow 0.3s}
-    .ba-card:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(20,44,80,.1)}
-    .ba-images{display:grid;grid-template-columns:1fr 1fr;min-height:230px}
-    .before,.after{display:flex;align-items:flex-end;padding:15px;color:#fff;font-weight:900}
-    .before{background:linear-gradient(135deg,#74838e,#354859)}
-    .after{background:linear-gradient(135deg,#84d5dc,#317a95)}
-    .ba-title{padding:18px 20px;font-weight:900;color:var(--navy)}
+    .ba-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:38px}
+    .ba-photo{
+      border-radius:12px;overflow:hidden;background-size:cover;background-position:center;
+      min-height:200px;transition:transform 0.3s,box-shadow 0.3s;
+      box-shadow:0 2px 12px rgba(20,44,80,.08);border:1px solid var(--line)
+    }
+    .ba-photo:hover{transform:translateY(-4px);box-shadow:0 8px 30px rgba(20,44,80,.15)}
 
     /* trust */
     .benefits{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:38px}
@@ -322,10 +344,15 @@
 
     .mobile-bar{display:none}
 
+    @media(max-width:1100px){
+      .service-grid{grid-template-columns:repeat(2,1fr)}
+      .ba-grid{grid-template-columns:repeat(3,1fr)}
+    }
+
     @media(max-width:900px){
       .benefits{grid-template-columns:repeat(2,1fr)}
-      .gallery,.ba-grid{grid-template-columns:repeat(2,1fr)}
-      .service-grid{grid-template-columns:1fr}
+      .gallery{grid-template-columns:repeat(2,1fr)}
+      .ba-grid{grid-template-columns:repeat(2,1fr)}
       .footer-grid{grid-template-columns:1fr 1fr}
     }
 
@@ -351,7 +378,9 @@
       .quote-grid{grid-template-columns:1fr}
       .full{grid-column:auto}
       .option-grid,.option-grid.levels,.option-grid.timing{grid-template-columns:1fr}
-      .gallery,.ba-grid,.benefits{grid-template-columns:1fr}
+      .service-grid,.gallery,.benefits{grid-template-columns:1fr}
+      .ba-grid{grid-template-columns:1fr;gap:12px}
+      .ba-photo{min-height:250px}
       .footer-grid{grid-template-columns:1fr}
       .mobile-bar{
         display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;z-index:70;
@@ -465,15 +494,65 @@
           <div><label>Property Address *</label><input id="quoteAddress" name="address" required placeholder="Street address, suburb, postcode"></div>
 
           <div class="full">
-            <label>Service Required</label>
-            <select id="quoteService" name="service" required>
-              <option value="">Select a service...</option>
-              <option value="Residential Window Cleaning">Residential Window Cleaning</option>
-              <option value="Commercial Window Cleaning">Commercial Window Cleaning</option>
-              <option value="High Reach Window Cleaning">High Reach Window Cleaning</option>
-              <option value="Gutter Cleaning">Gutter Cleaning</option>
-              <option value="Solar Panel Cleaning">Solar Panel Cleaning</option>
-            </select>
+            <label style="font-weight:700;color:#0b2f57;margin-bottom:12px;display:block">What service do you need? *</label>
+            <div class="option-grid">
+              <label class="option-box">
+                <input type="checkbox" name="services[]" value="Residential Window Cleaning">
+                <span>Residential Window Cleaning</span>
+              </label>
+              <label class="option-box">
+                <input type="checkbox" name="services[]" value="Commercial Window Cleaning">
+                <span>Commercial Window Cleaning</span>
+              </label>
+              <label class="option-box">
+                <input type="checkbox" name="services[]" value="Gutter Cleaning">
+                <span>Gutter Cleaning</span>
+              </label>
+              <label class="option-box">
+                <input type="checkbox" name="services[]" value="Solar Panel Cleaning">
+                <span>Solar Panel Cleaning</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="full">
+            <label style="font-weight:700;color:#0b2f57;margin-bottom:12px;display:block">How many levels is the property? *</label>
+            <div class="option-grid levels">
+              <label class="option-box">
+                <input type="radio" name="levels" value="Single Storey" required>
+                <span>Single Storey</span>
+              </label>
+              <label class="option-box">
+                <input type="radio" name="levels" value="Double Storey">
+                <span>Double Storey</span>
+              </label>
+              <label class="option-box">
+                <input type="radio" name="levels" value="3-4 Levels">
+                <span>3-4 Levels</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="full">
+            <label style="font-weight:700;color:#0b2f57;margin-bottom:12px;display:block">When would you like your cleaning completed? *</label>
+            <div class="option-grid timing">
+              <label class="option-box">
+                <input type="radio" name="timing" value="As soon as possible" required>
+                <span>As soon as possible</span>
+              </label>
+              <label class="option-box">
+                <input type="radio" name="timing" value="Within 7 days">
+                <span>Within 7 days</span>
+              </label>
+              <label class="option-box">
+                <input type="radio" name="timing" value="Within 2-4 weeks">
+                <span>Within 2-4 weeks</span>
+              </label>
+              <label class="option-box">
+                <input type="radio" name="timing" value="More than 4 weeks away">
+                <span>More than 4 weeks away</span>
+              </label>
+            </div>
           </div>
 
           <div><label>Preferred Contact Method</label>
@@ -516,9 +595,9 @@
 
   <section>
     <div class="container center">
-      <div class="section-kicker">WINDOW CLEANING SERVICES</div>
-      <h2 class="section-title">Professional Window Cleaning for Homes &amp; Businesses</h2>
-      <p class="section-copy">From single-storey homes to high-reach and commercial glass, our Professional Window Cleaners can tailor the service to your property. Interior and exterior glass, tracks and flyscreens are available, with simple quoting and clear communication.</p>
+      <div class="section-kicker">OUR SERVICES</div>
+      <h2 class="section-title">Perth Cleaning Services</h2>
+      <p class="section-copy">From window cleaning to solar panels and gutters, our professional team delivers exceptional results for homes and businesses across Perth. Fully insured, police-cleared, and committed to quality.</p>
 
       <div class="service-grid">
         <article class="service-card">
@@ -571,6 +650,36 @@
             </ul>
           </div>
         </article>
+
+        <article class="service-card">
+          <div style="width:100%;height:250px;background:linear-gradient(135deg,rgba(13,37,68,0.7),rgba(18,90,140,0.8)),url('MS_MEDIA/solar_panel_cleaning.png') center/cover"></div>
+          <div class="service-body">
+            <h3>Solar Panel Cleaning</h3>
+            <p>Maximize your solar efficiency with professional panel cleaning to remove dust, dirt, and debris.</p>
+            <ul class="ticks">
+              <li>Boost energy output by up to 30%</li>
+              <li>Purified water system (no streaks)</li>
+              <li>Safe access for roof panels</li>
+              <li>Regular maintenance available</li>
+              <li>Eco-friendly cleaning methods</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="service-card">
+          <div style="width:100%;height:250px;background:linear-gradient(135deg,rgba(13,37,68,0.7),rgba(18,90,140,0.8)),url('MS_MEDIA/image-use-8.jpeg') center/cover"></div>
+          <div class="service-body">
+            <h3>Gutter Cleaning</h3>
+            <p>Prevent water damage and blockages with professional gutter cleaning and debris removal.</p>
+            <ul class="ticks">
+              <li>Remove leaves, dirt &amp; debris</li>
+              <li>Downpipe flushing included</li>
+              <li>Prevent water overflow damage</li>
+              <li>Single &amp; multi-storey homes</li>
+              <li>Full gutter inspection report</li>
+            </ul>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -584,9 +693,9 @@
         <div class="gallery-card" data-label="Residential Exterior" style="background-image:url('MS_MEDIA/462650428_1316260329381655_6944296689735833511_n.jpg');background-size:cover;background-position:center"></div>
         <div class="gallery-card" data-label="High-Reach Windows" style="background-image:url('MS_MEDIA/462539093_1045500690639816_2536394125143598853_n.jpg');background-size:cover;background-position:center"></div>
         <div class="gallery-card" data-label="Commercial Glass" style="background-image:url('MS_MEDIA/commercial.jpeg');background-size:cover;background-position:center"></div>
-        <div class="gallery-card" data-label="Tracks & Flyscreens" style="background-image:url('MS_MEDIA/image-use-3.jpeg');background-size:cover;background-position:center"></div>
-        <div class="gallery-card" data-label="Shopfront Cleaning" style="background-image:url('MS_MEDIA/image-use-7.jpeg');background-size:cover;background-position:center"></div>
-        <div class="gallery-card" data-label="Window Cleaning" style="background-image:url('MS_MEDIA/image-use-9.jpeg');background-size:cover;background-position:center"></div>
+        <div class="gallery-card" data-label="Tracks & Flyscreens" style="background-image:url('MS_MEDIA/tracls.jpeg');background-size:cover;background-position:center"></div>
+        
+        <div class="gallery-card" data-label="Pool Fence Cleaning" style="background-image:url('MS_MEDIA/image-use-9.jpeg');background-size:cover;background-position:center"></div>
       </div>
     </div>
   </section>
@@ -597,27 +706,11 @@
       <h2 class="section-title">Before &amp; After</h2>
       <p class="section-copy">From dull, marked glass to a cleaner, brighter finish — the result is easy to see.</p>
       <div class="ba-grid">
-        <article class="ba-card">
-          <div class="ba-images">
-            <div class="before" style="background-image:url('MS_MEDIA/oven-before.jpeg');background-size:cover;background-position:center">BEFORE</div>
-            <div class="after" style="background-image:url('MS_MEDIA/oven-after.jpeg');background-size:cover;background-position:center">AFTER</div>
-          </div>
-          <div class="ba-title">Oven Cleaning</div>
-        </article>
-        <article class="ba-card">
-          <div class="ba-images">
-            <div class="before" style="background-image:url('MS_MEDIA/Sink-before.jpeg');background-size:cover;background-position:center">BEFORE</div>
-            <div class="after" style="background-image:url('MS_MEDIA/Sink-aftter.jpeg');background-size:cover;background-position:center">AFTER</div>
-          </div>
-          <div class="ba-title">Kitchen Sink</div>
-        </article>
-        <article class="ba-card">
-          <div class="ba-images">
-            <div class="before" style="background-image:url('MS_MEDIA/Airvents-Before.jpeg');background-size:cover;background-position:center">BEFORE</div>
-            <div class="after" style="background-image:url('MS_MEDIA/Airvents-After.jpeg');background-size:cover;background-position:center">AFTER</div>
-          </div>
-          <div class="ba-title">Air Vents</div>
-        </article>
+        <div class="ba-photo" style="background-image:url('MS_MEDIA/before and after windows cleaning/windows_1.jpeg')"></div>
+        <div class="ba-photo" style="background-image:url('MS_MEDIA/before and after windows cleaning/windows_2.jpeg')"></div>
+        <div class="ba-photo" style="background-image:url('MS_MEDIA/before and after windows cleaning/windows_3.jpeg')"></div>
+        <div class="ba-photo" style="background-image:url('MS_MEDIA/before and after windows cleaning/windows_4.jpeg')"></div>
+        <div class="ba-photo" style="background-image:url('MS_MEDIA/before and after windows cleaning/Window Tracks & Frames.png')"></div>
       </div>
     </div>
   </section>
@@ -874,6 +967,20 @@ function submitQuoteForm(e) {
   submitBtn.disabled = true;
 
   const formData = new FormData(form);
+  
+  // Collect selected services from checkboxes
+  const selectedServices = Array.from(form.querySelectorAll('input[name="services[]"]:checked'))
+    .map(cb => cb.value);
+  
+  if (selectedServices.length === 0) {
+    alert('Please select at least one service');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
+  
+  // Add services as comma-separated string
+  formData.set('service', selectedServices.join(', '));
   
   // Handle contact time based on method
   const contactMethod = document.getElementById('quoteContactMethod').value;
