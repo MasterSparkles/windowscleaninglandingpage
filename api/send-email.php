@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -7,215 +8,328 @@ header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('X-Content-Type-Options: nosniff');
 
-// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// Only allow POST requests
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
     exit();
 }
 
-// Helper functions
-function post_string(string $key): string {
+require_once __DIR__ . '/google-helpers.php';
+
+function post_string(string $key): string
+{
     $value = $_POST[$key] ?? '';
-    if (is_array($value)) return '';
-    return trim((string)$value);
+    if (is_array($value)) {
+        return '';
+    }
+
+    return trim((string) $value);
 }
 
-function h(?string $value): string {
-    return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+function sanitize_text(?string $value): string
+{
+    $clean = trim((string) $value);
+    return htmlspecialchars($clean, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-// Get form data
-$name = post_string('name');
-$phone = post_string('phone');
-$email = post_string('email');
-$service = post_string('service');
-$message = post_string('message');
-$address = post_string('address');
-$contactMethod = post_string('contactMethod');
-$contactTime = post_string('contactTime');
-$callDate = post_string('callDate');
-$callTime = post_string('callTime');
+function normalize_contact_method(string $value): string
+{
+    $value = strtolower(trim($value));
+    if ($value === 'phone' || $value === 'phone calls' || $value === 'phonecall') {
+        return 'phone';
+    }
 
-// Validate required fields
-if ($name === '' || $phone === '' || $email === '') {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Please complete all required fields']);
-    exit();
+    if ($value === 'email') {
+        return 'email';
+    }
+
+    if ($value === 'either') {
+        return 'either';
+    }
+
+    return '';
 }
 
-// Validate email format
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Please enter a valid email address']);
-    exit();
+function build_business_email(): string
+{
+    $email = getenv('BUSINESS_EMAIL');
+    if (is_string($email) && trim($email) !== '') {
+        return trim($email);
+    }
+
+    return 'mastersparklescleaning@gmail.com';
 }
 
-// Service names mapping
-$serviceNames = [
-    'residential' => 'Residential Window Cleaning',
-    'highreach' => 'Residential High Reach Cleaning',
-    'commercial' => 'Commercial Window Cleaning',
-    'solar' => 'Solar Panel Cleaning',
-    'domestic' => 'Domestic Cleaning',
-    'window' => 'Window Cleaning',
-    'endoflease' => 'End of Lease Cleaning',
-    'oven' => 'Oven Cleaning',
-    'carpet' => 'Carpet Cleaning',
-    'builders' => 'Builders Cleaning'
-];
+function build_email_body(array $data): string
+{
+    $service = $data['service'] !== '' ? $data['service'] : 'Not provided';
+    $levels = $data['levels'] !== '' ? $data['levels'] : 'Not provided';
+    $timing = $data['timing'] !== '' ? $data['timing'] : 'Not provided';
+    $contactMethod = $data['contactMethod'] === 'phone' ? 'Phone Calls' : 'Email';
 
-$serviceLabel = $serviceNames[$service] ?? $service;
+    $bookingDate = $data['callDate'] !== '' ? $data['callDate'] : 'Not provided';
+    $bookingTime = $data['callTime'] !== '' ? $data['callTime'] : 'Not provided';
 
-$submittedAt = gmdate('Y-m-d H:i:s') . ' UTC';
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $bestTime = $data['contactMethod'] === 'phone' && $data['contactTime'] !== '' ? $data['contactTime'] : 'Not provided';
 
-$subject = 'New Window Cleaning Quote Request - ' . $serviceLabel;
+    return "Hello,\n\n" .
+        "A new cleaning service booking has been submitted through the Master Sparkles Cleaning Service booking system.\n\n" .
+        "### Booking Details\n" .
+        "**Service:** " . $service . "\n\n" .
+        "**levels of the property:** " . $levels . "\n\n" .
+        "**prefered cleaning completed:** " . $timing . "\n\n" .
+        "### Customer Information\n" .
+        "**Full Name:** " . $data['name'] . "\n\n" .
+        "**Phone:** " . $data['phone'] . "\n\n" .
+        "**Email:** " . $data['email'] . "\n\n" .
+        "### Service Address\n" .
+        "**Address:** " . ($data['address'] !== '' ? $data['address'] : 'Not provided') . "\n\n" .
+        "**City:** " . ($data['city'] !== '' ? $data['city'] : 'Not provided') . "\n\n" .
+        "**State:** " . ($data['state'] !== '' ? $data['state'] : 'Not provided') . "\n\n" .
+        "---\n\n" .
+        "### What happens next?\n" .
+        "Thank you for choosing **Master Sparkles Cleaning Service**.\n\n" .
+        "Our team will review your booking details and contact you regarding confirmation, availability, and any additional information required.\n\n" .
+        "If you have any questions or need to make changes to your booking, please reply directly to this email.\n\n" .
+        "Kind regards,\n\n" .
+        "**Master Sparkles Cleaning Service**\n" .
+        "*Professional Cleaning Services*\n\n" .
+        "### Additional Booking Details\n" .
+        "**Preferred Contact Method:** " . $contactMethod . "\n\n" .
+        "**Preferred Booking Date:** " . $bookingDate . "\n\n" .
+        "**Preferred Contact Time:** " . $bookingTime . "\n\n" .
+        "**Best Time to Contact:** " . $bestTime . "\n\n" .
+        "**Message:** " . ($data['message'] !== '' ? $data['message'] : 'Not provided') . "\n";
+}
 
-// Format contact preferences
-$contactMethodLabels = [
-    'phone' => 'Phone Call',
-    'email' => 'Email',
-    'either' => 'Either Phone or Email'
-];
-$contactTimeLabels = [
-    'morning' => 'Morning (8am - 12pm)',
-    'afternoon' => 'Afternoon (12pm - 5pm)',
-    'evening' => 'Evening (5pm - 8pm)',
-    'anytime' => 'Anytime'
-];
-
-$contactMethodText = $contactMethodLabels[$contactMethod] ?? $contactMethod;
-$contactTimeText = $contactTimeLabels[$contactTime] ?? $contactTime;
-
-// Plain text email
-$plainText = "New Window Cleaning Quote Request\n\n" .
-    "Name: $name\n" .
-    "Phone: $phone\n" .
-    "Email: $email\n" .
-    "Service: $serviceLabel\n" .
-    "Address: " . ($address ?: 'Not provided') . "\n\n" .
-    "CONTACT PREFERENCES:\n" .
-    "Preferred Method: $contactMethodText\n" .
-    "Best Time: $contactTimeText\n\n" .
-    "Message: " . ($message ?: 'No additional details') . "\n\n" .
-    "Submitted: $submittedAt\n" .
-    "IP: $ip\n\n" .
-    "Master Sparkle's Cleaning Service";
-
-try {
-    // Use hosting email for better deliverability
-    $fromEmail = 'noreply@mastersparkles.com.au';
-    $adminEmails = [
-        'admin@mastersparkles.com.au',
-        'jenniferricana21@gmail.com',
-        'leads@mastersparkles.com.au',
-        'mastersparklescleaning@gmail.com'
-    ];
-    
-    // Email headers
-    $headers = "From: Master Sparkle's Cleaning <$fromEmail>\r\n";
-    $headers .= "Reply-To: $email\r\n";
+function send_business_email(string $recipient, string $replyTo, string $subject, string $body): bool
+{
+    $fromEmail = build_business_email();
+    $headers = "From: Master Sparkles Cleaning <{$fromEmail}>\r\n";
+    $headers .= "Reply-To: {$replyTo}\r\n";
     $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-    
-    // Send to all admin emails
-    $sent = false;
-    foreach ($adminEmails as $adminEmail) {
-        $result = mail($adminEmail, $subject, $plainText, $headers);
-        if ($result) {
-            $sent = true;
-            error_log("Email sent successfully to: $adminEmail");
-        } else {
-            error_log("Email failed to send to: $adminEmail");
-        }
+
+    $result = mail($recipient, $subject, $body, $headers);
+    if ($result) {
+        error_log('Business email sent to: ' . $recipient);
+        return true;
     }
- 
-    if (!$sent) {
-        error_log('Email send failed - returning false');
+
+    error_log('Business email failed to send to: ' . $recipient);
+    return false;
+}
+
+function validate_phone_request(array $data): array
+{
+    $errors = [];
+
+    $callDate = $data['callDate'];
+    $callTime = $data['callTime'];
+    $businessNow = getBusinessNow();
+    $today = $businessNow->format('Y-m-d');
+    $tomorrow = $businessNow->modify('+1 day')->format('Y-m-d');
+
+    if ($callDate === '' || $callTime === '') {
+        $errors[] = 'Phone Calls requires a valid date and time selection.';
+        return $errors;
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $callDate)) {
+        $errors[] = 'Invalid phone-call date selection.';
+        return $errors;
+    }
+
+    if ($callDate !== $today && $callDate !== $tomorrow) {
+        $errors[] = 'Phone Calls must be scheduled for Today or Tomorrow only.';
+        return $errors;
+    }
+
+    if (!preg_match('/^\d{2}:\d{2}$/', $callTime)) {
+        $errors[] = 'Invalid phone-call time selection.';
+        return $errors;
+    }
+
+    $allowedTimes = [
+        '08:00', '08:15', '08:30', '08:45', '09:00', '09:15', '09:30', '09:45',
+        '10:00', '10:15', '10:30', '10:45', '14:00', '14:15', '14:30', '14:45',
+        '15:00', '15:15', '15:30', '15:45', '16:00', '16:15', '16:30', '16:45', '17:00'
+    ];
+
+    if (!in_array($callTime, $allowedTimes, true)) {
+        $errors[] = 'Phone Calls must use one of the available 15-minute time slots.';
+        return $errors;
+    }
+
+    $slotDateTime = new DateTimeImmutable($callDate . ' ' . $callTime, new DateTimeZone(getBusinessTimeZone()));
+    if ($callDate === $today && $slotDateTime <= $businessNow) {
+        $errors[] = 'Past phone-call times are not available.';
+    }
+
+    return $errors;
+}
+
+$name = sanitize_text(post_string('name'));
+$phone = sanitize_text(post_string('phone'));
+$email = sanitize_text(post_string('email'));
+$address = sanitize_text(post_string('address'));
+$city = sanitize_text(post_string('city'));
+$state = sanitize_text(post_string('state'));
+$service = sanitize_text(post_string('service'));
+$levels = sanitize_text(post_string('levels'));
+$timing = sanitize_text(post_string('timing'));
+$contactMethod = normalize_contact_method(post_string('contactMethod'));
+$contactTime = sanitize_text(post_string('contactTime'));
+$callDate = sanitize_text(post_string('callDate'));
+$callTime = sanitize_text(post_string('callTime'));
+$message = sanitize_text(post_string('message'));
+
+if ($name === '' || $phone === '' || $email === '' || $service === '') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please complete all required fields.']);
+    exit();
+}
+
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please enter a valid email address.']);
+    exit();
+}
+
+if ($contactMethod === '') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Please choose a Preferred Contact Method.']);
+    exit();
+}
+
+if ($contactMethod === 'phone') {
+    $validationErrors = validate_phone_request([
+        'callDate' => $callDate,
+        'callTime' => $callTime,
+    ]);
+
+    if ($validationErrors !== []) {
+        http_response_code(422);
+        echo json_encode([
+            'success' => false,
+            'message' => implode(' ', $validationErrors),
+        ]);
+        exit();
+    }
+}
+
+$submittedAt = getBusinessNow()->format('Y-m-d H:i:s');
+$subject = 'New Lead From - "Master Sparkles Cleaning"';
+$businessEmail = build_business_email();
+
+$data = [
+    'name' => $name,
+    'phone' => $phone,
+    'email' => $email,
+    'address' => $address,
+    'city' => $city,
+    'state' => $state,
+    'service' => $service,
+    'levels' => $levels,
+    'timing' => $timing,
+    'contactMethod' => $contactMethod,
+    'contactTime' => $contactTime,
+    'callDate' => $callDate,
+    'callTime' => $callTime,
+    'message' => $message,
+    'submittedAt' => $submittedAt,
+];
+
+$body = build_email_body($data);
+
+try {
+    if (!send_business_email($businessEmail, $email, $subject, $body)) {
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Failed to send your request. Please call us at 0424 262 102.'
+            'message' => 'We could not send your request right now. Please try again or call us directly.',
         ]);
         exit();
     }
 
-    // Send customer confirmation email
-    $customerSubject = 'We received your quote request - Master Sparkle\'s';
-    $customerText = "Thanks $name,\n\n" .
-        "We received your request for: $serviceLabel\n" .
-        "We will contact you shortly.\n\n" .
-        "Your details:\n" .
-        "Phone: $phone\n" .
-        "Email: $email\n\n" .
-        "Message:\n$message\n\n" .
-        "Master Sparkle's Cleaning Service\n" .
-        "0424 262 102";
+    $sheetRow = [
+        $submittedAt,
+        $name,
+        $phone,
+        $email,
+        $address,
+        $callDate,
+        $service,
+        $contactMethod === 'phone' ? 'Call' : 'Email',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+    ];
 
-    try {
-        if ($email !== '') {
-            $customerHeaders = "From: Master Sparkle's Cleaning <$fromEmail>\r\n";
-            $customerHeaders .= "Reply-To: noreply@mastersparkles.com.au\r\n";
-            $customerHeaders .= "X-Mailer: PHP/" . phpversion() . "\r\n";
-            $customerHeaders .= "Content-Type: text/plain; charset=UTF-8\r\n";
-            
-            $customerResult = mail($email, $customerSubject, $customerText, $customerHeaders);
-            if ($customerResult) {
-                error_log("Customer confirmation email sent to: $email");
-            } else {
-                error_log("Customer confirmation email failed to send to: $email");
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('Customer confirmation email failed: ' . $e->getMessage());
+    $sheetStored = appendGoogleSheetRow($sheetRow);
+    if ($sheetStored === false) {
+        error_log('Google Sheets append returned false for lead submission.');
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Your request was sent, but one of the tracking systems could not be updated. Please call us to confirm your booking.',
+        ]);
+        exit();
     }
 
-    // Log to Google Sheets Daily Tracker
-    try {
-        $sheetsData = [
+    if ($contactMethod === 'phone') {
+        $calendarResult = createGoogleCalendarEvent([
             'name' => $name,
             'phone' => $phone,
             'email' => $email,
-            'address' => $address,
             'service' => $service,
-            'contactMethod' => $contactMethod,
-            'contactTime' => $contactTime,
+            'levels' => $levels,
+            'timing' => $timing,
+            'address' => $address,
+            'city' => $city,
+            'state' => $state,
             'message' => $message,
             'callDate' => $callDate,
-            'callTime' => $callTime
-        ];
-        
-        // Call Google Sheets integration
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'send-to-sheets.php');
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($sheetsData));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $sheetsResponse = curl_exec($ch);
-        curl_close($ch);
-        
-        error_log("Google Sheets response: " . $sheetsResponse);
-    } catch (Throwable $e) {
-        error_log('Google Sheets logging failed: ' . $e->getMessage());
+            'callTime' => $callTime,
+            'contactMethodLabel' => 'Phone Calls',
+            'callDateLabel' => $callDate,
+            'callTimeLabel' => $callTime,
+            'contactTime' => $contactTime,
+        ]);
+
+        if ($calendarResult === false) {
+            error_log('Google Calendar event creation failed for lead submission.');
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Your request was sent, but the calendar booking could not be created. Please call us to confirm your appointment.',
+            ]);
+            exit();
+        }
     }
 
     echo json_encode([
         'success' => true,
-        'message' => 'Your request has been sent. We will contact you shortly.'
+        'message' => 'Your request has been sent. We will contact you shortly.',
     ]);
 } catch (Throwable $e) {
+    error_log('send-email.php error: ' . $e->getMessage());
     http_response_code(500);
-    error_log('EmailControl error: ' . $e->getMessage());
     echo json_encode([
         'success' => false,
-        'message' => 'Server error while sending your request.'
+        'message' => 'Server error while sending your request.',
     ]);
 }

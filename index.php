@@ -555,14 +555,16 @@
             </div>
           </div>
 
-          <div><label>Preferred Contact Method</label>
-            <select id="quoteContactMethod" name="contactMethod" onchange="toggleTimeSlotPicker()">
-              <option value="phone">Phone Call</option>
+          <div style="position:relative">
+            <label>Preferred Contact Method</label>
+            <select id="quoteContactMethod" name="contactMethod" onchange="toggleTimeSlotPicker(); updateSelectPlaceholder('quoteContactMethod', 'contactMethodPlaceholder')" required>
+              <option value="phone">Phone Calls</option>
               <option value="email">Email</option>
               <option value="either">Either</option>
             </select>
+            <div id="contactMethodPlaceholder" style="position:absolute;left:12px;top:65%;transform:translateY(-50%);color:#94a3b8;font-size:20px;pointer-events:none;display:block;">Choose method</div>
           </div>
-          <div id="generalTimeGroup">
+          <div id="generalTimeGroup" style="display:none">
             <label>Best Time to Contact</label>
             <select id="quoteContactTime" name="contactTime">
               <option value="morning">Morning (8am - 12pm)</option>
@@ -572,13 +574,15 @@
             </select>
           </div>
 
-          <div class="full" id="timeSlotPicker">
+          <div class="full" id="timeSlotPicker" style="display:none">
             <label>Select Date & Time for Phone Call</label>
-            <select id="callDate" name="callDate" onchange="loadTimeSlots()" style="margin-bottom:12px">
-              <option value="">Choose a date...</option>
-              <option value="today">Today</option>
-              <option value="tomorrow">Tomorrow</option>
-            </select>
+            <div style="position:relative">
+              <select id="callDate" name="callDate" onchange="loadTimeSlots(); updateSelectPlaceholder('callDate', 'callDatePlaceholder')" style="margin-bottom:12px">
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+              </select>
+              <div id="callDatePlaceholder" style="position:absolute;left:12px;top:40%;transform:translateY(-50%);color:#94a3b8;font-size:20px;pointer-events:none;display:block;">Choose date</div>
+            </div>
             <div id="timeSlotsContainer" style="display:none">
               <div style="font-size:14px;color:#64748b;margin-bottom:8px">Available time slots (15-minute intervals):</div>
               <div class="time-slots-grid" id="timeSlotsList"></div>
@@ -839,38 +843,100 @@ function toggleTimeSlotPicker() {
   const contactMethod = document.getElementById('quoteContactMethod').value;
   const timeSlotPicker = document.getElementById('timeSlotPicker');
   const generalTimeGroup = document.getElementById('generalTimeGroup');
-  
+  const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+  const selectedTimeSlot = document.getElementById('selectedTimeSlot');
+  const callDate = document.getElementById('callDate');
+
   if (contactMethod === 'phone') {
     timeSlotPicker.style.display = 'block';
     generalTimeGroup.style.display = 'none';
-  } else {
+    callDate.selectedIndex = -1;
+    callDate.value = '';
+  } else if (contactMethod === 'either') {
     timeSlotPicker.style.display = 'none';
     generalTimeGroup.style.display = 'block';
-    document.getElementById('timeSlotsContainer').style.display = 'none';
+    timeSlotsContainer.style.display = 'none';
+    selectedTimeSlot.style.display = 'none';
+    callDate.selectedIndex = -1;
+    callDate.value = '';
+    document.getElementById('timeSlotsList').innerHTML = '';
+    selectedSlot = null;
+  } else {
+    timeSlotPicker.style.display = 'none';
+    generalTimeGroup.style.display = 'none';
+    timeSlotsContainer.style.display = 'none';
+    selectedTimeSlot.style.display = 'none';
+    callDate.selectedIndex = -1;
+    callDate.value = '';
+    document.getElementById('timeSlotsList').innerHTML = '';
+    selectedSlot = null;
   }
+
+  updateSelectPlaceholder('quoteContactMethod', 'contactMethodPlaceholder');
+  updateSelectPlaceholder('callDate', 'callDatePlaceholder');
+}
+
+function updateSelectPlaceholder(selectId, placeholderId) {
+  const select = document.getElementById(selectId);
+  const placeholder = document.getElementById(placeholderId);
+
+  if (!select || !placeholder) return;
+
+  placeholder.style.display = select.value ? 'none' : 'block';
+}
+
+function getPerthDateParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Perth',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const values = {};
+
+  parts.forEach(part => {
+    if (part.type !== 'literal') {
+      values[part.type] = part.value;
+    }
+  });
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    second: Number(values.second),
+  };
+}
+
+function getPerthDateString(date = new Date()) {
+  const parts = getPerthDateParts(date);
+  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
 function loadTimeSlots() {
   const dateInput = document.getElementById('callDate');
   const dateValue = dateInput.value;
-  
+
   if (!dateValue) return;
-  
-  // Convert today/tomorrow to actual date
-  let actualDate;
-  const today = new Date();
-  
-  if (dateValue === 'today') {
-    actualDate = today.toISOString().split('T')[0];
-  } else if (dateValue === 'tomorrow') {
-    const tomorrow = new Date(today);
+
+  let actualDate = getPerthDateString();
+
+  if (dateValue === 'tomorrow') {
+    const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    actualDate = tomorrow.toISOString().split('T')[0];
+    actualDate = getPerthDateString(tomorrow);
   }
-  
-  // Fetch booked slots from API using actual date
+
   fetch(`api/get-calendar-slots.php?date=${actualDate}`)
-    .then(res => res.json())
+    .then(response => response.json())
     .then(data => {
       const bookedSlots = data.bookedSlots || [];
       generateTimeSlots(actualDate, bookedSlots, dateValue);
@@ -884,34 +950,73 @@ function loadTimeSlots() {
 }
 
 function generateTimeSlots(date, bookedSlots, dateLabel) {
-  const slots = [];
-  const startHour = 11;
-  const startMinute = 0;
-  const endHour = 14;
-  const endMinute = 0;
-  const interval = 15;
-  
-  let currentHour = startHour;
-  let currentMinute = startMinute;
-  
-  while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
-    const timeString = formatTime(currentHour, currentMinute);
-    const isBooked = bookedSlots.includes(timeString + ':00');
-    
-    slots.push({
-      time: timeString,
-      display: formatTime12Hour(currentHour, currentMinute),
-      booked: isBooked
+  const nowParts = getPerthDateParts();
+  const nowUtc = Date.UTC(nowParts.year, nowParts.month - 1, nowParts.day, nowParts.hour, nowParts.minute, nowParts.second);
+  const normalizedBookedSlots = (bookedSlots || []).map(slot => slot.slice(0, 5));
+
+  const morningSlots = [];
+  let startHour = 8;
+  let startMinute = 0;
+  const morningEndHour = 11;
+
+  while (startHour < morningEndHour || (startHour === morningEndHour && startMinute < 0)) {
+    const slotTime = formatTime(startHour, startMinute);
+    morningSlots.push({
+      time: slotTime,
+      display: formatTime12Hour(startHour, startMinute),
+      booked: normalizedBookedSlots.includes(slotTime)
     });
-    
-    currentMinute += interval;
-    if (currentMinute >= 60) {
-      currentHour++;
-      currentMinute = 0;
+
+    startMinute += 15;
+    if (startMinute >= 60) {
+      startHour += 1;
+      startMinute = 0;
     }
   }
-  
-  renderTimeSlots(slots, date, dateLabel);
+
+  const afternoonSlots = [];
+  startHour = 14;
+  startMinute = 0;
+
+  while (startHour < 17 || (startHour === 17 && startMinute === 0)) {
+    const slotTime = formatTime(startHour, startMinute);
+    afternoonSlots.push({
+      time: slotTime,
+      display: formatTime12Hour(startHour, startMinute),
+      booked: normalizedBookedSlots.includes(slotTime)
+    });
+
+    startMinute += 15;
+    if (startMinute >= 60) {
+      startHour += 1;
+      startMinute = 0;
+    }
+
+    if (startHour === 17 && startMinute > 0) {
+      break;
+    }
+  }
+
+  const allSlots = morningSlots.concat(afternoonSlots);
+  const filteredSlots = allSlots.filter(slot => {
+    if (dateLabel !== 'today') {
+      return true;
+    }
+
+    const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+    const slotUtc = Date.UTC(
+      Number(date.slice(0, 4)),
+      Number(date.slice(5, 7)) - 1,
+      Number(date.slice(8, 10)),
+      slotHour,
+      slotMinute,
+      0
+    );
+
+    return slotUtc > nowUtc;
+  });
+
+  renderTimeSlots(filteredSlots, date, dateLabel);
 }
 
 function formatTime(hour, minute) {
@@ -927,39 +1032,39 @@ function formatTime12Hour(hour, minute) {
 function renderTimeSlots(slots, date, dateLabel) {
   const container = document.getElementById('timeSlotsList');
   container.innerHTML = '';
-  
+
   slots.forEach(slot => {
     const slotDiv = document.createElement('div');
     slotDiv.className = 'time-slot' + (slot.booked ? ' booked' : '');
     slotDiv.textContent = slot.display;
-    
+
     if (!slot.booked) {
-      slotDiv.onclick = () => selectTimeSlot(slot.time, slot.display, date, dateLabel);
+      slotDiv.onclick = () => selectTimeSlot(slot.time, slot.display, date, dateLabel, slotDiv);
     }
-    
+
     container.appendChild(slotDiv);
   });
 }
 
-function selectTimeSlot(time, display, date, dateLabel) {
+function selectTimeSlot(time, display, date, dateLabel, slotElement) {
   selectedSlot = { time, display, date, dateLabel };
-  
+
   document.querySelectorAll('.time-slot').forEach(slot => {
     slot.classList.remove('selected');
   });
-  
-  event.target.classList.add('selected');
-  
+
+  slotElement.classList.add('selected');
+
   const selectedDiv = document.getElementById('selectedTimeSlot');
   selectedDiv.style.display = 'block';
-  
-  // Display friendly label (Today/Tomorrow)
+
   const dayLabel = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
   selectedDiv.innerHTML = `✓ Selected: ${display} ${dayLabel}`;
 }
 
 function submitQuoteForm(e) {
   e.preventDefault();
+
   const form = e.target;
   const submitBtn = form.querySelector('.submit');
   const originalText = submitBtn.textContent;
@@ -967,66 +1072,104 @@ function submitQuoteForm(e) {
   submitBtn.disabled = true;
 
   const formData = new FormData(form);
-  
-  // Collect selected services from checkboxes
   const selectedServices = Array.from(form.querySelectorAll('input[name="services[]"]:checked'))
     .map(cb => cb.value);
-  
+
   if (selectedServices.length === 0) {
     alert('Please select at least one service');
     submitBtn.textContent = originalText;
     submitBtn.disabled = false;
     return;
   }
-  
-  // Add services as comma-separated string
+
   formData.set('service', selectedServices.join(', '));
-  
-  // Handle contact time based on method
+
+  const levels = form.querySelector('input[name="levels"]:checked');
+  const timing = form.querySelector('input[name="timing"]:checked');
+  formData.set('levels', levels ? levels.value : '');
+  formData.set('timing', timing ? timing.value : '');
+
   const contactMethod = document.getElementById('quoteContactMethod').value;
-  if (contactMethod === 'phone' && selectedSlot) {
-    // Send friendly label to customer email
+  if (!contactMethod) {
+    alert('Please choose a Preferred Contact Method.');
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    return;
+  }
+
+  if (contactMethod === 'email') {
+    formData.set('callDate', '');
+    formData.set('callTime', '');
+  }
+
+  if (contactMethod === 'phone') {
+    if (!selectedSlot) {
+      alert('Please choose a valid phone-call date and time.');
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      return;
+    }
+
     const dayLabel = selectedSlot.dateLabel.charAt(0).toUpperCase() + selectedSlot.dateLabel.slice(1);
     formData.set('contactTime', `${selectedSlot.display} ${dayLabel}`);
-    // Send actual date for calendar booking
     formData.set('callDate', selectedSlot.date);
     formData.set('callTime', selectedSlot.time);
   }
 
-  fetch('api/send-email.php', { 
-    method: 'POST', 
-    body: formData 
+  fetch('api/send-email.php', {
+    method: 'POST',
+    body: formData
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      if (typeof gtag !== 'undefined') {
-        gtag('event', 'conversion', {'send_to': 'AW-XXXXXXXXX/CONVERSION_LABEL'});
+    .then(async response => {
+      const data = await response.json();
+
+      if (data.success) {
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'conversion', {'send_to': 'AW-XXXXXXXXX/CONVERSION_LABEL'});
+        }
+
+        if (typeof fbq !== 'undefined') {
+          fbq('track', 'Lead', {
+            content_name: 'Window Cleaning Quote',
+            content_category: 'Window Cleaning',
+            value: 149.00,
+            currency: 'AUD'
+          });
+        }
+
+        form.innerHTML = '<div style="text-align: center; padding: 60px 20px;"><div style="font-size:64px;color:#20b7c9;margin-bottom:20px;">✓</div><h3 style="font-size:32px;color:#0b2f57;margin:0 0 12px;">Thank You!</h3><p style="color:#536b82;font-size:18px;">' + data.message + '</p></div>';
+      } else {
+        alert(data.message || 'Error sending message');
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
       }
-      
-      if (typeof fbq !== 'undefined') {
-        fbq('track', 'Lead', {
-          content_name: 'Window Cleaning Quote',
-          content_category: 'Window Cleaning',
-          value: 149.00,
-          currency: 'AUD'
-        });
-      }
-      
-      form.innerHTML = '<div style="text-align: center; padding: 60px 20px;"><div style="font-size:64px;color:#20b7c9;margin-bottom:20px;">✓</div><h3 style="font-size:32px;color:#0b2f57;margin:0 0 12px;">Thank You!</h3><p style="color:#536b82;font-size:18px;">' + data.message + '</p></div>';
-    } else {
-      alert(data.message || 'Error sending message');
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error sending message. Please call us at 0424 262 102.');
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    alert('Error sending message. Please call us at 0424 262 102.');
-    submitBtn.textContent = originalText;
-    submitBtn.disabled = false;
-  });
+    });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+  const selectedMethod = document.getElementById('quoteContactMethod');
+  const callDate = document.getElementById('callDate');
+
+  if (selectedMethod) {
+    selectedMethod.selectedIndex = -1;
+    selectedMethod.value = '';
+  }
+
+  if (callDate) {
+    callDate.selectedIndex = -1;
+    callDate.value = '';
+  }
+
+  updateSelectPlaceholder('quoteContactMethod', 'contactMethodPlaceholder');
+  updateSelectPlaceholder('callDate', 'callDatePlaceholder');
+  toggleTimeSlotPicker();
+});
 </script>
 
 </body>
