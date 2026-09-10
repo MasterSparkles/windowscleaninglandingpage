@@ -1,0 +1,28 @@
+# WordPress Integration for Email System
+# This tells the email system where to find WordPress
+SetEnv WP_LOAD_PATH /home/mastersparklescleaningperth/public_html/wp-load.php
+
+# Alternative paths (uncomment the correct one if above doesn't work):
+# SetEnv WP_LOAD_PATH /home/username/public_html/wp-load.php
+# SetEnv WP_LOAD_PATH ../wp-load.php
+# SetEnv WP_LOAD_PATH ../../wp-load.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Force HTTPS - must be first
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  RewriteRule ^index\.html$ - [L]
+
+  # Don't rewrite requests to /releases
+  RewriteRule ^releases/ - [L]
+
+  # If the request is not a real file or directory, serve index.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+
+</IfModule>
